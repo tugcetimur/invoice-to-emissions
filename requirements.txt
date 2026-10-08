@@ -1,0 +1,8 @@
+pdfplumber
+pydantic
+pandas
+pytest
+streamlit
+python-dotenv
+notebook
+ipykernel
