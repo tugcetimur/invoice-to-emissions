@@ -1,0 +1,17 @@
+invoice_id,file_name,invoice_type,fuel_type,supplier,period_start,period_end,quantity,unit,total_amount,currency,layout_id
+INV-2025-001,INV-2025-001.pdf,electricity,,Northwind Energy,2025-04-01,2025-04-30,404,kWh,115.3,EUR,1
+INV-2025-002,INV-2025-002.pdf,electricity,,Northwind Energy,2025-07-01,2025-07-31,4667,kWh,568.14,EUR,1
+INV-2025-003,INV-2025-003.pdf,electricity,,Northwind Energy,2025-10-01,2025-10-31,1991,kWh,314.91,EUR,3
+INV-2025-004,INV-2025-004.pdf,electricity,,Northwind Energy,2025-01-01,2025-01-31,11.2,MWh,2769.94,EUR,3
+INV-2025-005,INV-2025-005.pdf,electricity,,Northwind Energy,2025-06-01,2025-06-30,13.3,MWh,2045.92,EUR,1
+INV-2025-006,INV-2025-006.pdf,electricity,,BrightGrid Power,2025-10-01,2025-10-31,6.6,MWh,2058.37,EUR,1
+INV-2025-007,INV-2025-007.pdf,natural_gas,,BlueFlame Gas,2025-07-01,2025-07-31,4592,kWh,831.46,EUR,3
+INV-2025-008,INV-2025-008.pdf,natural_gas,,BlueFlame Gas,2025-02-01,2025-02-28,4929,kWh,1241.63,EUR,3
+INV-2025-009,INV-2025-009.pdf,natural_gas,,Metro Gas Co,2025-02-01,2025-02-28,853,kWh,808.72,EUR,2
+INV-2025-010,INV-2025-010.pdf,natural_gas,,BlueFlame Gas,2025-06-01,2025-06-30,3188,kWh,703.87,EUR,3
+INV-2025-011,INV-2025-011.pdf,natural_gas,,BlueFlame Gas,2025-09-01,2025-09-30,673,m3,482.36,EUR,1
+INV-2025-012,INV-2025-012.pdf,fuel,diesel,RoadStar Petrol,2025-11-01,2025-11-30,817,litre,1298.18,EUR,1
+INV-2025-013,INV-2025-013.pdf,fuel,petrol,Apex Fuels,2025-07-01,2025-07-31,105,litre,206.17,EUR,1
+INV-2025-014,INV-2025-014.pdf,fuel,petrol,Apex Fuels,2025-07-01,2025-07-31,475,litre,882.93,EUR,2
+INV-2025-015,INV-2025-015.pdf,fuel,petrol,RoadStar Petrol,2025-09-01,2025-09-30,545,litre,1047.21,EUR,3
+INV-2025-016,INV-2025-016.pdf,fuel,petrol,Apex Fuels,2025-03-01,2025-03-31,781,litre,1213.3,EUR,1
