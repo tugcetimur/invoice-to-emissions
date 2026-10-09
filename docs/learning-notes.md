@@ -145,3 +145,7 @@ inv = InvoiceData(
 - Hangi hatayı aldım ve nasıl çözdüm:
 - Öğrendiğim yeni komut ya da kavram:
 - Sıradaki iş:
+
+### Aşama 2: faktör eşleştirme (tarih)
+- Ne yaptım:
+- Öğrendiğim:
