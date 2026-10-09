@@ -149,3 +149,16 @@ inv = InvoiceData(
 ### Aşama 2: faktör eşleştirme (tarih)
 - Ne yaptım:
 - Öğrendiğim:
+
+### Aşama 2 tamamlandı (9 Ekim 2026)
+- Yazdıklarım: `src/factors.py` (faktör bulma, MWh'dan kWh'a dönüşüm), `src/calculate.py` (miktar x faktör, kg ve ton), `scripts/calculate_all.py` (16 fatura için toplu hesap)
+- Testler: şema, faktör eşleştirme, hesaplama, altın değer testi (1000 kWh = 177 kg), toplam 18 test
+- Öğrendiklerim:
+  - Belirsiz ya da eksik faktörde sessiz tahmin yerine hata fırlatılır
+  - Ondalık sayıları `pytest.approx` ile karşılaştır
+  - Script'leri proje kökünden `python -m scripts.isim` ile çalıştır, aksi halde `src` bulunamaz
+  - Üretilen çıktı klasörü (`output/`) commit'lenmez, `.gitignore`'a eklenir
+  - `git add` ile dosya adı verirken dosyalar var olmalı
+  - PR açıklamasındaki `Closes #N` numarası issue sayfasındaki gerçek numara olmalı
+- Doğrulama: 4 faturayı Excel'de elle hesapladım, sonuçlar scriptle uyuştu (uyuşmadıysa buraya sebebini yaz)
+- Sıradaki: Aşama 3, metin çıkarma (pdfplumber) ve regex ile alan çıkarma
