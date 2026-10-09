@@ -224,3 +224,6 @@ __marimo__/
 data/private/
 *.log
 .DS_Store
+
+# Generated results
+output/
