@@ -162,3 +162,16 @@ inv = InvoiceData(
   - PR açıklamasındaki `Closes #N` numarası issue sayfasındaki gerçek numara olmalı
 - Doğrulama: 4 faturayı Excel'de elle hesapladım, sonuçlar scriptle uyuştu (uyuşmadıysa buraya sebebini yaz)
 - Sıradaki: Aşama 3, metin çıkarma (pdfplumber) ve regex ile alan çıkarma
+
+### Aşama 3a: regex ile bilgi çıkarma (Ekim 2026)
+- Yazdıklarım: `src/extract_rules.py` (PDF'ten metin okuma, regex ile alan çıkarma), `scripts/evaluate_rules.py` (alan bazında doğruluk ölçümü)
+- Sonuç: 16 sentetik faturada tüm alanlarda 16/16 doğruluk
+- Öğrendiklerim:
+  - Önce ham metne bak, sonra regex yaz
+  - Sayıyı değil etiketi çapa olarak ara
+  - Bulamazsan tahmin etme, `None` döndür
+  - %100 skor şüphelidir: kendi şablonuma göre yazdığım kuralı kendi şablonumda test ettim (döngüsel değerlendirme)
+  - Kuralları geliştirdiğim veri ile test ettiğim veriyi ayrı tut
+  - `ModuleNotFoundError` olunca önce dosya var mı (`ls`) diye bak
+- Regex'in sınırı: farklı etiket ya da yazım gelince hiçbir alanı bulamıyor (denedim: "Energy used this month")
+- Sıradaki: bilerek zor bir fatura seti, sonra yerel LLM (Ollama)
