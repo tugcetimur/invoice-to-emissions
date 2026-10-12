@@ -175,3 +175,16 @@ inv = InvoiceData(
   - `ModuleNotFoundError` olunca önce dosya var mı (`ls`) diye bak
 - Regex'in sınırı: farklı etiket ya da yazım gelince hiçbir alanı bulamıyor (denedim: "Energy used this month")
 - Sıradaki: bilerek zor bir fatura seti, sonra yerel LLM (Ollama)
+
+### Aşama 3a devamı: zor fatura seti (Ekim 2026)
+- Yazdıklarım: `scripts/generate_messy_invoices.py` (13 elle tasarlanmış fatura, her birinde tek bir çarpıklık), `tests/ground_truth_messy.csv`
+- Ölçüm scriptini güçlendirdim: `argparse` ile set seçimi, hataları `missed` (bulamadı) ve `wrong` (yanlış buldu) diye ayırdım
+- Öğrendiklerim:
+  - Ölçmeden önce tahmin yaz, sonra sonuçla karşılaştır
+  - Zor seti yalnızca ölçmek için kullan, kuralları ona göre düzeltme
+  - Eksik veri güvenli bir hatadır, yanlış veri tehlikeli bir hatadır (sessizce rapora girer)
+  - Her test faturasına tek bir çarpıklık koyarsam hatanın nedenini bulmak kolaylaşır
+  - Kontrol örneği (standart fatura) setin kendisinin bozuk olmadığını gösterir
+  - `git branch -d` yalnızca merge edilmiş branch'i siler, `-D` kontrolü atlar
+- Sonuç: (zor setteki skoru buraya yaz)
+- Sıradaki: hataları analiz et, sonra yerel LLM (Ollama) ile aynı iki sette ölçüm
