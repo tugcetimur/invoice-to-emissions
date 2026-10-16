@@ -25,15 +25,15 @@ Rules:
 
 
 class LLMInvoice(BaseModel):
-    invoice_type: Optional[Literal["electricity", "natural_gas", "fuel"]] = None
-    fuel_type: Optional[Literal["diesel", "petrol"]] = None
-    supplier: Optional[str] = None
-    period_start: Optional[str] = None
-    period_end: Optional[str] = None
-    quantity: Optional[float] = None
-    unit: Optional[Literal["kWh", "MWh", "m3", "litre"]] = None
-    total_amount: Optional[float] = None
-    currency: Optional[str] = None
+    invoice_type: Optional[Literal["electricity", "natural_gas", "fuel"]]
+    fuel_type: Optional[Literal["diesel", "petrol"]]
+    supplier: Optional[str]
+    period_start: Optional[str]
+    period_end: Optional[str]
+    quantity: Optional[float]
+    unit: Optional[Literal["kWh", "MWh", "m3", "litre"]]
+    total_amount: Optional[float]
+    currency: Optional[str]
 
 
 def valid_iso_date(value):
