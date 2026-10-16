@@ -1,0 +1,14 @@
+invoice_id,file_name,invoice_type,fuel_type,supplier,period_start,period_end,quantity,unit,total_amount,currency,twist
+INV-M-01,INV-M-01.pdf,electricity,,Green Power Ltd,2025-03-01,2025-03-31,500,kWh,150.0,EUR,unfamiliar quantity label
+INV-M-02,INV-M-02.pdf,electricity,,BrightGrid Power,2025-04-01,2025-04-30,842,kWh,210.5,EUR,unit written in capitals
+INV-M-03,INV-M-03.pdf,electricity,,Solaris Utility,2025-03-01,2025-03-31,1234.5,kWh,1287.6,EUR,European number format
+INV-M-04,INV-M-04.pdf,natural_gas,,Metro Gas Co,2025-02-01,2025-02-28,312,m3,245.8,EUR,cubic metre sign (m3 with superscript)
+INV-M-05,INV-M-05.pdf,natural_gas,,BlueFlame Gas,2025-03-01,2025-03-31,450,kWh,120.0,EUR,dates written with 'to' and full month names
+INV-M-06,INV-M-06.pdf,fuel,petrol,Apex Fuels,2025-05-01,2025-05-31,640,litre,1180.4,EUR,unknown petrol name (ULP 95)
+INV-M-07,INV-M-07.pdf,fuel,diesel,RoadStar Petrol,2025-06-01,2025-06-30,900,litre,1570.0,EUR,unknown diesel name (Gasoil)
+INV-M-08,INV-M-08.pdf,electricity,,Northwind Energy,2025-07-01,2025-07-31,3200,kWh,1250.0,EUR,currency written after the amount
+INV-M-09,INV-M-09.pdf,electricity,,SunRise Electricity,2025-08-01,2025-08-31,2150,kWh,560.25,EUR,supplier name is not the first line
+INV-M-10,INV-M-10.pdf,electricity,,BrightGrid Power,2025-09-01,2025-09-30,520,kWh,111.8,EUR,earlier line with a similar label (last year usage)
+INV-M-11,INV-M-11.pdf,natural_gas,,Metro Gas Co,2025-10-01,2025-10-31,275,m3,98.5,EUR,period given as a month only
+INV-M-12,INV-M-12.pdf,electricity,,Luz do Sul Lda,2025-03-01,2025-03-31,380,kWh,98.4,EUR,Portuguese language invoice
+INV-M-13,INV-M-13.pdf,electricity,,Northwind Energy,2025-11-01,2025-11-30,1800,kWh,420.0,EUR,control invoice (standard format)
