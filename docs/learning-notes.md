@@ -188,3 +188,57 @@ inv = InvoiceData(
   - `git branch -d` yalnızca merge edilmiş branch'i siler, `-D` kontrolü atlar
 - Sonuç: 1/13 fatura tam doğru, alan bazında 89/117 doğru, 25 missed, 3 wrong (sessiz yanlışlar: #3 tutar, #9 tedarikçi, #10 miktar)
 - Sıradaki: hataları analiz et, sonra yerel LLM (Ollama) ile aynı iki sette ölçüm
+
+### Aşama 3b: yerel LLM ile bilgi çıkarma (Ekim 2026)
+- Yazdıklarım: `src/extract_llm.py` (Ollama ile çıkarma, Pydantic şeması), `tests/test_extract_llm.py` (modeli taklit eden testler), `scripts/evaluate.py` (`--method rules|llm`, kritik alan ve süre ölçütleri), `scripts/debug_llm.py` (modelin ham cevabını gösterir), `docs/llm-experiments.md` (deney günlüğü)
+- Kurulum: Ollama uygulaması ve `llama3.2:3b` modeli (2 GB). Python tarafında ayrıca `ollama` kütüphanesi gerekti: uygulama ile kütüphane iki ayrı parça
+- Sonuçlar (kolay set, 16 fatura): ilk hali 0/16 tam doğru. Şemada tüm alanları zorunlu ama `null` olabilir yapınca 14/16 (kritik alanlar 15/16, 1 sessiz yanlış), fatura başına yaklaşık 3,7 sn
+- Regex (zor set, 13 fatura): 1/13 tam doğru, kritik alanlar 5/13, 1 sessiz yanlış
+- Teşhisler:
+  - Model `Optional` alanları `null` yazmak yerine JSON'dan hiç yazmıyordu (anahtar yoktu). Sebep: şemada alanlar zorunlu değildi
+  - Kontrollü deneyle (tedarikçi adını "RoadStar Petrol" yerine "RoadStar Fuels" yaptım) modelin yakıt cinsini tedarikçi adından çıkardığını kanıtladım
+  - `01/02/2025` tarihini 2 Ocak okudu (gün ile ay yer değiştirdi)
+- Öğrendiklerim:
+  - Önce modelin ham cevabına bak, sonra düzelt: teşhis tahminimi çürüttü
+  - Opsiyonel alan ile `null` değer farklı şeyler. Zorunlu ama `null` olabilir yapınca model karar vermek zorunda kalır
+  - Tek değişiklik, tek ölçüm; her deneyi `docs/llm-experiments.md` dosyasına yaz
+  - Kontrollü deney: tek şeyi değiştir (tedarikçi adı), sonucu karşılaştır
+  - Modeli testte taklit et (mock), kendi kodunu test et
+  - Geliştirme seti ile final sınavını ayrı tut: zor seti LLM ile henüz ölçmedim
+  - Yer tutuculu komutu sonuç gelmeden çalıştırma, komut bitmeden yeni komut yapıştırma
+  - `git checkout REF -- yol` dosyaları aynı anda commit'e hazır hale getirir, karışık commit buradan çıktı
+- Sıradaki: Deney 2 (yakıt cinsini ürün satırından belirlet), Deney 3 (tarihi modele yazıldığı gibi okutup kodda çevir), zor sette final ölçüm, sonra hibrit mantık
+
+## Ek komutlar (Aşama 3)
+
+Ollama:
+- `ollama --version`, `ollama list`, `ollama pull model`: kurulumu ve indirilen modelleri gösterir/indirir
+- `ollama run model "soru"`: modele terminalden soru sorar (`/bye` ile çıkılır)
+- `ollama ps`: bellekte yüklü modeli gösterir
+- `curl http://localhost:11434`: "Ollama is running" yazarsa sunucu açık
+- `open -a Ollama`: Ollama uygulamasını açar
+
+Terminal:
+- `komut | tee dosya`: çıktıyı hem ekrana hem dosyaya yazar
+- `komut | grep METİN`: yalnızca o metni içeren satırları gösterir (`grep -n` satır numarasıyla)
+- `sed -i '' 's#eski#yeni#' dosya`: dosyada bul-değiştir (macOS)
+- `time komut`: komutun süresini ölçer
+- `uname -m`: `arm64` ise Apple Silicon
+- `which python`: hangi Python'un çalıştığını gösterir (ortam doğru mu?)
+- `python -m scripts.isim`: script'i proje kökünden çalıştırır
+
+Git:
+- `git fetch`: GitHub'daki yenilikleri öğrenir ama dosyalara dokunmaz (`git pull` ise indirip uygular)
+- `git restore --staged .`: commit'e hazırlananları geri çeker, dosyalara dokunmaz
+- `git mv eski yeni`: dosyayı geçmişi koruyarak yeniden adlandırır
+- `git checkout REF -- yol`: başka bir branch'ten dosya getirir ve commit'e hazır hale de getirir
+- `git branch -a`: GitHub'daki branch'ler dahil hepsini listeler
+- `git branch --show-current`: bulunduğum branch'i yazar
+- `git --no-pager diff --staged --stat`: commit'e hazır değişikliklerin özeti (sayfalayıcı yok)
+
+Ek hatalar:
+- `unknown option staged` ya da `not a git repository`: proje klasöründe değilim, satır başında `(invoice-emissions)` ve klasör adına bak
+- `ModuleNotFoundError: ollama`: Python kütüphanesi kurulu değil (`python -m pip install ollama`)
+- `Connection refused`: Ollama kapalı, `open -a Ollama`
+- Satır başında `heredoc>` ya da `dquote>`: komut bitmemiş ya da tırnak açık kalmış, `Ctrl+C` ile çık
+- Ekranın altında `:` ve takılma: Git sayfalayıcısı, `q` ile çık
