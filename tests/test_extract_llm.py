@@ -69,3 +69,13 @@ def test_response_with_missing_keys_is_rejected(monkeypatch):
 def test_all_fields_are_required_in_schema():
     required = llm.LLMInvoice.model_json_schema().get("required", [])
     assert set(required) == set(ALL_KEYS)
+
+
+def test_dates_are_converted_day_first():
+    assert llm.to_iso_date("01/02/2025") == "2025-02-01"
+    assert llm.to_iso_date("01 Apr 2025") == "2025-04-01"
+
+
+def test_missing_or_unknown_dates_become_none():
+    assert llm.to_iso_date(None) is None
+    assert llm.to_iso_date("sometime in spring") is None
