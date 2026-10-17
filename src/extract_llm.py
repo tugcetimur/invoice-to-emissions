@@ -15,7 +15,7 @@ Return only the requested JSON fields.
 Rules:
 - If a value is not clearly stated in the invoice text, return null. Never guess.
 - invoice_type is one of: electricity, natural_gas, fuel.
-- fuel_type is diesel or petrol for fuel invoices, otherwise null.
+- fuel_type is diesel or petrol for fuel invoices, otherwise null. Decide it only from the product line (the Description), never from the supplier name.
 - Dates must be in ISO format YYYY-MM-DD.
 - quantity and total_amount must be plain numbers without thousands separators or currency symbols.
 - quantity is the amount consumed in the billing period, not a meter reading.
