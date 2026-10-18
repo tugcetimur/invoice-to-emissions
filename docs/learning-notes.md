@@ -242,3 +242,17 @@ Ek hatalar:
 - `Connection refused`: Ollama kapalı, `open -a Ollama`
 - Satır başında `heredoc>` ya da `dquote>`: komut bitmemiş ya da tırnak açık kalmış, `Ctrl+C` ile çık
 - Ekranın altında `:` ve takılma: Git sayfalayıcısı, `q` ile çık
+
+### Aşama 3b devamı: deneyler 2 ve 3 (17 Ekim 2026)
+- Deney 2: prompt'a "yakıt cinsini yalnızca ürün satırından belirle" ekledim: 15/16 tam doğru, kritik alanlar 16/16, sessiz kritik hata 0
+- Deney 3: modele tarihi yazıldığı gibi okutup kodda çevirdim (`to_iso_date` ve `parse_date`, gün önce): tarihler 16/16. Yan etki: INV-2025-015 tedarikçisi "RoadStar Petrol" yerine "RoadStar" çıktı (kritik değil)
+- Öğrendiklerim:
+  - Aynı skor farklı risk olabilir: 15/16'nın sebebi sistematik tarih belirsizliğinden kozmetik bir tedarikçi hatasına döndü
+  - Bir prompt değişikliği ilgisiz bir alanı bozabilir, bu yüzden her deneyde tüm alanları ölç
+  - Önce test yaz ve kırmızı gör, sonra kodu değiştir (2 test başarısız oldu, kod sonrası 33 passed)
+  - `python - << 'PY'` ile çok yerli değişiklik yaparken `assert` kullan, eşleşme yoksa sessizce yanlış değiştirmesin
+  - Kural koda taşınınca denetlenebilir olur ama tanımadığı biçimde `None` döner (zor sette ölçülecek)
+  - `git branch -r --merged origin/main` GitHub'da silinebilecek branch'leri gösterir, `git fetch --prune` silinmişlerin yerel kayıtlarını temizler
+  - Merge'ü kanıtla doğrula: test sayısı arttı (24 → 31), `git log`'da merge commit, `git branch --merged`
+  - Branch silmeden önce uyarıyı oku: `-d` GitHub kopyasına bakıp "güvenli" sayabilir
+- Sıradaki: tedarikçi hatasını yeniden ölçüp tekrarlanabilir mi bak, sonra zor sette final sınavı (LLM), sonra hibrit mantık

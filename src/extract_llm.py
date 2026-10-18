@@ -1,11 +1,10 @@
 import os
-from datetime import date
 from typing import Literal, Optional
 
 from ollama import chat
 from pydantic import BaseModel, ValidationError
 
-from src.extract_rules import FIELDS, read_pdf_text
+from src.extract_rules import FIELDS, parse_date, read_pdf_text
 
 MODEL = os.getenv("OLLAMA_MODEL", "llama3.2:3b")
 
@@ -15,8 +14,8 @@ Return only the requested JSON fields.
 Rules:
 - If a value is not clearly stated in the invoice text, return null. Never guess.
 - invoice_type is one of: electricity, natural_gas, fuel.
-- fuel_type is diesel or petrol for fuel invoices, otherwise null.
-- Dates must be in ISO format YYYY-MM-DD.
+- fuel_type is diesel or petrol for fuel invoices, otherwise null. Decide it only from the product line (the Description), never from the supplier name.
+- Dates must be copied exactly as written in the invoice. Do not convert or reformat them.
 - quantity and total_amount must be plain numbers without thousands separators or currency symbols.
 - quantity is the amount consumed in the billing period, not a meter reading.
 - unit is one of: kWh, MWh, m3, litre.
@@ -36,12 +35,11 @@ class LLMInvoice(BaseModel):
     currency: Optional[str]
 
 
-def valid_iso_date(value):
-    """Return the value as an ISO date string, or None if it is not a valid date."""
-    try:
-        return date.fromisoformat(value).isoformat()
-    except (TypeError, ValueError):
+def to_iso_date(value):
+    """Convert a date written on the invoice to ISO format (day first), or None."""
+    if not isinstance(value, str):
         return None
+    return parse_date(value)
 
 
 def extract_with_llm(text, model=None):
@@ -64,8 +62,8 @@ def extract_with_llm(text, model=None):
         return empty
 
     fields = parsed.model_dump()
-    fields["period_start"] = valid_iso_date(fields["period_start"])
-    fields["period_end"] = valid_iso_date(fields["period_end"])
+    fields["period_start"] = to_iso_date(fields["period_start"])
+    fields["period_end"] = to_iso_date(fields["period_end"])
     return {name: fields[name] for name in FIELDS}
 
 
