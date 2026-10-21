@@ -35,3 +35,31 @@ def is_grounded(value, text, tolerance=0.01):
         if any(abs(value - candidate) < tolerance for candidate in number_candidates(token)):
             return True
     return False
+
+
+# Price per unit in EUR. The bands are deliberately wide: they only exist to catch
+# gross scale errors (a factor of 100 or 1000), not unusual prices.
+PRICE_BANDS = {
+    ("electricity", "kWh"): (0.03, 1.5),
+    ("electricity", "MWh"): (30.0, 1500.0),
+    ("natural_gas", "kWh"): (0.01, 1.5),
+    ("natural_gas", "m3"): (0.02, 20.0),
+    ("fuel", "litre"): (0.7, 4.0),
+}
+
+
+def price_per_unit(total_amount, quantity):
+    """Price paid per unit of quantity, or None if it cannot be computed."""
+    if not total_amount or not quantity:
+        return None
+    return total_amount / quantity
+
+
+def price_is_plausible(invoice_type, unit, quantity, total_amount):
+    """True or False if the price per unit is inside its band, None if it cannot be judged."""
+    band = PRICE_BANDS.get((invoice_type, unit))
+    price = price_per_unit(total_amount, quantity)
+    if band is None or price is None:
+        return None
+    low, high = band
+    return low <= price <= high
