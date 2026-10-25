@@ -8,3 +8,4 @@ notebook
 ipykernel
 reportlab
 ollama
+openpyxl
