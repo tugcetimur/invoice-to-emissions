@@ -1,0 +1,26 @@
+invoice_id,file_name,invoice_type,fuel_type,supplier,period_start,period_end,quantity,unit,total_amount,currency,expected_outcome,twist
+F-01,F-01.pdf,electricity,,Aurora Power,2025-01-01,2025-01-31,620,kWh,161.2,EUR,process,control: electricity kWh
+F-02,F-02.pdf,electricity,,Helios Energy,2025-02-01,2025-02-28,2.5,MWh,625.0,EUR,process,control: electricity MWh
+F-03,F-03.pdf,natural_gas,,Terra Gas,2025-03-01,2025-03-31,410,m3,389.5,EUR,process,control: gas m3
+F-04,F-04.pdf,natural_gas,,Flame Energy,2025-04-01,2025-04-30,3800,kWh,342.0,EUR,process,control: gas kWh
+F-05,F-05.pdf,fuel,diesel,Nova Fuels,2025-05-01,2025-05-31,760,litre,1292.0,EUR,process,control: fuel diesel
+F-06,F-06.pdf,fuel,petrol,Meridian Fuels,2025-06-01,2025-06-30,520,litre,936.0,EUR,process,control: fuel petrol
+F-07,F-07.pdf,electricity,,Lumen Electric,2025-07-01,2025-07-31,480,kWh,124.8,EUR,process,unit written out: kilowatt-hours
+F-08,F-08.pdf,electricity,,Ember Utilities,2025-08-01,2025-08-31,700,kWh,182.0,EUR,process,new label: Energy used
+F-09,F-09.pdf,electricity,,Delta Power,2025-09-01,2025-09-30,1234,kWh,320.84,EUR,process,space as thousands separator
+F-10,F-10.pdf,electricity,,Sol Energy,2025-10-01,2025-10-31,400,kWh,98.4,EUR,process,currency symbol before the amount
+F-11,F-11.pdf,electricity,,Zenith Power,2025-03-01,2025-03-31,560,kWh,145.6,EUR,process,period written as 2025-03-01 to 2025-03-31
+F-12,F-12.pdf,fuel,petrol,Orbit Fuels,2025-04-01,2025-04-30,450,litre,855.0,EUR,process,Premium unleaded 98 and unit L
+F-13,F-13.pdf,fuel,diesel,Quartz Fuels,2025-05-01,2025-05-31,1250.5,litre,2125.85,EUR,process,Euro diesel B7 and decimal comma
+F-14,F-14.pdf,electricity,,Orion Electricity,2025-06-01,2025-06-30,830,kWh,215.8,EUR,process,header line before the supplier name
+F-15,F-15.pdf,natural_gas,,Blue Horizon Gas,2025-07-01,2025-07-31,2900,kWh,261.0,EUR,process,gas label without the word natural
+F-16,F-16.pdf,electricity,,Pioneer Energy,2025-08-01,2025-08-31,,,190.0,EUR,review,quantity not written anywhere
+F-17,F-17.pdf,natural_gas,,Harbor Gas,2025-10-01,2025-10-31,300,m3,285.0,EUR,review,period given as a month name only
+F-18,F-18.pdf,fuel,,Northern Oil,2025-02-01,2025-02-28,800,litre,760.0,EUR,review,heating oil
+F-19,F-19.pdf,electricity,,Aurora Power,2025-01-01,2025-01-31,-120,kWh,-31.2,EUR,review,credit note with a negative quantity
+F-20,F-20.pdf,electricity,,Aurora Power,2025-01-01,2025-01-31,620,kWh,161.2,EUR,review,same content as F-01 under another file name
+F-21,F-21.pdf,natural_gas,,Alpine Gas,2025-09-01,2025-09-30,3.8,MWh,342.0,EUR,review,gas in MWh
+F-22,F-22.pdf,electricity,,Anadolu Enerji A.S.,2025-03-01,2025-03-31,540,kWh,140.4,EUR,process,Turkish-language invoice (amount in EUR to isolate the language)
+F-23,F-23.pdf,electricity,,Grid Partners,2025-04-01,2025-04-30,840,kWh,218.4,EUR,process,active kWh next to a reactive kVArh line
+F-24,F-24.pdf,electricity,,Duo Energy,2025-05-01,2025-05-31,500,kWh,130.0,EUR,either,day and night tariff lines without a total
+F-25,F-25.pdf,electricity,,Prime Electric,2025-06-01,2025-06-30,1200,kWh,312.0,EUR,either,MWh and kWh written together
