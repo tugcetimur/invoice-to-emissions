@@ -67,7 +67,8 @@ Details: `docs/llm-experiments.md`, `docs/final-exam.md`, `docs/hybrid-results.m
 - I kept a development set and a test set, and did not tune anything on the test set.
 - Before every official run I wrote my predictions down and committed them. After the run I reported the results as they were, and treated the used set as "burned".
 - I separate **missed** values (nothing found, safe: a human fills it in) from **wrong** values (dangerous: they go silently into the report).
-- From the hybrid step on, I wrote the tests before the code (red, then green). There are 89 tests.
+- From the hybrid step on, I wrote the tests before the code (red, then green). There are 94 tests.
+- I used an AI assistant as a tutor. I designed the experiments and made the decisions myself; the assistant helped me write and debug the code, and I ran and checked every result.
 
 ## Setup
 
@@ -154,5 +155,3 @@ See `docs/roadmap.md`.
 ## License
 
 MIT
-
-- I used an AI assistant as a tutor. I designed the experiments and made the decisions myself; the assistant helped me write and debug the code, and I ran and checked every result.
