@@ -5,16 +5,15 @@
 - Phase 2: schema and calculation core
 - Phase 3: regex reader, local LLM reader and hybrid merge
 - Phase 4: validation rules, decision policy, end-to-end pipeline and Excel report
+- Phase 5: fresh evaluation set (25 invoices), predictions committed before the run, one official run. Results: docs/fresh-set-results.md
+- README
 
-## Next (v1.0)
-1. Phase 5: fresh evaluation set (25 invoices), pre-registered predictions, one official run. Design: docs/fresh-set-design.md (issue #16)
-2. Phase 7: README, GitHub Actions and the v1.0 release (issue #18)
-
-Next step: generate the 25 fresh invoices and their ground truth.
+## Next
+- v1.0 release: README with results and limitations, repository description, release notes (issue #18)
 
 ## After v1.0
 - v1.1: Streamlit interface (issue #17)
-- v2: country-aware emission factors and model improvements. See docs/country-factors-design.md and docs/real-world-risks.md
+- v2: country-aware emission factors (docs/country-factors-design.md), the gaps found on the fresh set (docs/fresh-set-results.md) and the risks for real data (docs/real-world-risks.md)
 
 ## Current limitations
 - Synthetic data only
