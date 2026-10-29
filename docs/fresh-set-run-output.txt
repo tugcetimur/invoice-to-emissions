@@ -1,0 +1,49 @@
+F-01  ideal=process  processed     correct
+F-02  ideal=process  processed     correct
+F-03  ideal=process  processed     correct
+F-04  ideal=process  processed     correct
+F-05  ideal=process  processed     correct
+F-06  ideal=process  processed     correct
+F-07  ideal=process  processed     correct
+F-08  ideal=process  processed     correct
+F-09  ideal=process  needs_review  unneeded_review
+       quantity: number not found in the invoice text (quantity: llm_only (regex=None, llm=1234.0))
+F-10  ideal=process  processed     correct
+F-11  ideal=process  processed     correct
+F-12  ideal=process  processed     correct
+F-13  ideal=process  processed     correct
+F-14  ideal=process  processed     correct
+F-15  ideal=process  needs_review  unneeded_review
+       invoice_type: llm_only (regex=None, llm='natural_gas')
+F-16  ideal=review   needs_review  needed_review
+       quantity: empty (regex=None, llm=None)
+F-17  ideal=review   needs_review  needed_review
+       billing period missing: period_start, period_end (needed to assign the emissions to a reporting period)
+F-18  ideal=review   needs_review  needed_review
+       invoice_type: llm_only (regex=None, llm='fuel')
+F-19  ideal=review   needs_review  needed_review
+       quantity: number not found in the invoice text (quantity: llm_only (regex=None, llm=-120.0))
+F-20  ideal=review   needs_review  needed_review
+       possible duplicate of F-01.pdf
+F-21  ideal=review   needs_review  needed_review
+       quantity: price per unit could not be checked (quantity: agreed (regex=3.8, llm=3.8))
+F-22  ideal=process  needs_review  unneeded_review
+       invoice_type: llm_only (regex=None, llm='electricity')
+F-23  ideal=process  processed     correct
+F-24  ideal=either   needs_review  acceptable_review
+       quantity: number not found in the invoice text (quantity: llm_only (regex=None, llm=500.0))
+F-25  ideal=either   needs_review  acceptable_review
+       quantity: conflict (regex=1.2, llm=1200.0)
+
+Outcomes:
+  correct            14
+  silent_error       0
+  needed_review      6
+  acceptable_review  2
+  unneeded_review    3
+  crash              0
+
+Processed automatically: 14/25
+Silent errors: 0 []
+Emissions of the processed invoices: system 9.945 t, truth 9.945 t, deviation +0.00 %
+Coverage of the ideal total: 89.7 %
