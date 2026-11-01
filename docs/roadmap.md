@@ -6,14 +6,15 @@
 - Phase 3: regex reader, local LLM reader and hybrid merge
 - Phase 4: validation rules, decision policy, end-to-end pipeline and Excel report
 - Phase 5: fresh evaluation set (25 invoices), predictions committed before the run, one official run. Results: docs/fresh-set-results.md
-- README
+- README and the v1.0 release
+- v1.1: one-sheet workbook for a folder of invoices (scripts/make_footprint_excel.py), with nine synthetic UK sample invoices (data/uk_samples). Findings: docs/uk-samples-findings.md
 
 ## Next
-- v1.0 release: README with results and limitations, repository description, release notes (issue #18)
+- v2 (design document first): several products per invoice, consistency checks, market-based green electricity, more fuels, a better regex reader and a new unseen set to measure on
 
-## After v1.0
-- v1.1: Streamlit interface (issue #17)
-- v2: country-aware emission factors (docs/country-factors-design.md), the gaps found on the fresh set (docs/fresh-set-results.md) and the risks for real data (docs/real-world-risks.md)
+## Later
+- Streamlit interface (issue #17)
+- Country-aware emission factors (docs/country-factors-design.md) and the risks for real data (docs/real-world-risks.md)
 
 ## Current limitations
 - Synthetic data only
