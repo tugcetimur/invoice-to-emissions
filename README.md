@@ -85,7 +85,7 @@ Details: `docs/llm-experiments.md`, `docs/final-exam.md`, `docs/hybrid-results.m
 - I kept a development set and a test set, and did not tune anything on the test set.
 - Before every official run I wrote my predictions down and committed them. After the run I reported the results as they were, and treated the used set as "burned".
 - I separate **missed** values (nothing found, safe: a human fills it in) from **wrong** values (dangerous: they go silently into the report).
-- From the hybrid step on, I wrote the tests before the code (red, then green). There are 111 tests.
+- From the hybrid step on, I wrote the tests before the code (red, then green). There are 131 tests.
 - I wrote the code together with an AI assistant (Claude), which also acted as a tutor and explained every step. I chose the project and its scope, decided that conflicting readings always go to a human, asked how flagged invoices would reach a reviewer (which became the review queue sheet of the Excel report), proposed country-aware emission factors (planned for v2), wrote my own predictions for the fresh set before the official run, ran the commands and reviewed the results. Every number in this README comes from running the code on the committed data.
 
 ## Setup
@@ -116,6 +116,18 @@ python -m scripts.run_pipeline --pdf-dir data/sample_invoices --out output/pipel
 ```
 
 This writes `results.csv`, `review_queue.csv` and `results.xlsx` to the output folder.
+
+### One workbook for a folder of invoices
+
+Put the PDFs in a folder and run (Ollama must be running):
+
+```bash
+python -m scripts.make_footprint_excel --pdf-dir data/uk_samples --out output/footprint.xlsx
+```
+
+The workbook has a `Footprint` sheet (one row per invoice: the processed invoices first, then the invoices that need a human, in grey italic) and a `Summary` sheet (how many emissions were confirmed, how many invoices went to review and why, how often each field was read). Values the readers did not find stay empty. A confirmed emission only exists for invoices the pipeline approved. For invoices that need a human, an indicative emission is shown in its own column when the quantity, the unit and the fuel passed the checks. It is never added to the confirmed total.
+
+`data/uk_samples` holds nine synthetic UK invoices (see the note in that folder). None of them is processed automatically yet; what that run showed is in `docs/uk-samples-findings.md`.
 
 Measure the readers against the ground truth:
 
@@ -149,6 +161,7 @@ src/
   policy.py          processed or review, with reasons and suggestions
   pipeline.py        end to end: folder in, results and review items out
   report.py          Excel workbook
+  footprint.py       one-sheet workbook for a folder of invoices
   schema.py          invoice data model (Pydantic)
   factors.py         emission factor lookup and unit conversion
   calculate.py       emission calculation
@@ -166,13 +179,15 @@ docs/                experiment log, final exam, fresh set design and results, r
 - No scanned invoices (no OCR).
 - Difficult invoices go to review often: 7 of 13 on the messy set and 11 of 25 on the fresh set (3 of them unneeded). That is the price of zero silent errors, and it will need to come down for real use.
 - The fresh set result is one run of a deterministic model: a trend, not a guarantee. The gaps it showed are in `docs/fresh-set-results.md`.
+- On nine realistic synthetic UK invoices none was processed automatically (the regex reader finds nothing on those layouts, so the invoice type is confirmed by one reader only). Two of them got an indicative value and both matched the PDFs. Hand-checked findings: `docs/uk-samples-findings.md`.
 - Known problems with real invoices are listed in `docs/real-world-risks.md`.
 
 ## Roadmap
 
-- **v1.0:** this release.
-- **v1.1:** Streamlit interface.
-- **v2:** country-aware emission factors (see `docs/country-factors-design.md`), the gaps found on the fresh set (credit notes, space-grouped thousands, invoice type labels, summing tariff lines, gas in MWh) and a larger model compared on a new unseen set.
+- **v1.0:** the pipeline and its evaluation.
+- **v1.1:** a one-sheet workbook for a folder of invoices.
+- **v2:** several products per invoice, consistency checks (meter readings against consumption, line amounts against the net total, the billing period found in the text), market-based emissions for green electricity, more fuels, country-aware factors (see `docs/country-factors-design.md`), a better regex reader and a new unseen set to measure on.
+- **Later:** Streamlit interface.
 
 See `docs/roadmap.md`.
 
