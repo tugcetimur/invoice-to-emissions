@@ -103,6 +103,33 @@ def test_an_invoice_that_contradicts_itself_goes_to_review(row):
         assert row["expected_outcome"] == "review"
 
 
+# Rules 4 and 7 and the VAT note: these are recorded as flags and do not stop the invoice.
+FLAGS = {
+    "D-01": "vat_mismatch 6.80 vs 6.94",
+    "D-02": "total_conflict 138.45 vs 142.19",
+    "D-03": "vat_mismatch 6.35 vs 6.53",
+    "D-04": "supplier_claim_ignored",
+    "D-06": "total_conflict 58.40 vs 54.51",
+}
+
+
+@pytest.mark.parametrize("row", ROWS, ids=IDS)
+def test_a_flag_is_recorded_and_does_not_stop_the_invoice(row):
+    flag = FLAGS.get(row["invoice_id"])
+    if flag:
+        assert flag in row["twist"]
+        assert row["expected_outcome"] == "process"
+    else:
+        assert not any(name in row["twist"] for name in ("vat_mismatch", "total_conflict", "supplier_claim_ignored"))
+
+
+@pytest.mark.parametrize("row", ROWS, ids=IDS)
+def test_export_is_never_taken_off_the_consumption(row):
+    if float(row["export_kwh"]) > 0:
+        assert float(row["import_kwh"]) > 0
+        assert row["kg_co2e_location_based"] and float(row["kg_co2e_location_based"]) == pytest.approx(float(row["import_kwh"]) * FACTOR, abs=0.001)
+
+
 @pytest.mark.parametrize("row", ROWS, ids=IDS)
 def test_the_period_and_the_outcome_are_valid(row):
     assert row["period_start"] <= row["period_end"]

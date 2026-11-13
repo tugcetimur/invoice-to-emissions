@@ -6,6 +6,19 @@ Unseen set: `data/uk_electricity/unseen/` (35 invoices, locked). It is not opene
 
 This document is a draft. The sections below are filled in as decisions are made.
 
+## What has to be right
+
+The goal is a correct emission, not a perfect copy of the invoice. The emission is kWh x factor; the price is never part of it. So the fields are split into three levels:
+
+| Level | Fields | If a value cannot be confirmed |
+|---|---|---|
+| 1. Critical | import kWh, unit, energy type (electricity), billing period | the invoice goes to review |
+| 2. Market-based evidence | REGO statement and its scope | market-based is left empty and goes to review; the invoice is still processed with its location-based emission |
+| 3. Information | payable total, VAT, standing charge, supplier, invoice number, account number, export kWh | kept if read, left empty if not, a flag if inconsistent; never stops the invoice |
+
+Why the billing period is critical: it picks the factor year and the reporting year, and it is how a duplicate invoice is found.
+The price and the line amounts are not critical, but they are used as evidence: when kWh x rate gives the amount printed on the invoice, the kWh are confirmed (rules 2 and 5). A wrong kWh breaks that arithmetic; a wrong total does not change the emission.
+
 ## Findings from the dev set
 
 ### Where the L1 quantities came from (checked 13 Nov 2026)
@@ -52,6 +65,20 @@ On all six, neither the readings nor the money agree with the consumption:
 The baseline read the consumption correctly on all six, but the invoice gives no way to confirm it. On a real bill a reading difference can differ from the billed kWh when a meter multiplier is printed, when the meter was exchanged (two meter rows) or when the register rolled over. None of these is shown here, and 24,638 / 263.1 is not a whole-number multiplier.
 These invoices are synthetic ("illustrative", "fictional training document"). They stay in the dev set as a test of the contradiction case.
 
+### L2 to L4: several lines, solar export and totals (checked 13 Nov 2026)
+
+| Invoice | Lines | Consumption | Every line and the net reconcile | Totals |
+|---|---|---|---|---|
+| D-04 (L2, smart meter, no readings) | day 210 x 27.20p = £57.12, night 160 x 18.50p = £29.60, standing charge 31 days x 41.30p = £12.80 | 370 | yes, net £99.52, VAT 5% £4.98 | £104.50, one value |
+| D-05 (L3, commercial) | day 1,450 x 28.40p = £411.80, night 820 x 19.10p = £156.62, capacity and standing fee 31 days x 120p = £37.20 | 2,270 | yes, net £605.62, VAT 20% £121.12 | £726.74, one value |
+| D-06 (L4, solar) | import 11,480 - 11,200 = 280 x 24p = £67.20, export 2,300 - 2,100 = 200 shown as -200 x -15p = -£30.00, standing charge 31 x 45p = £13.95 | 280 | yes, net £51.15, VAT on the import line only £3.36 | £58.40 in the header, £54.51 in the table |
+
+Traps on these layouts: the "31 days" of the standing charge is not kWh; the solar export is printed as -200 kWh; 280 - 200 = 80 is not the consumption.
+D-04 also prints a supplier claim ("your 100% renewable tariff saved 84.2 kg CO2 this month"), which is more than the invoice's whole location-based emission (65.49 kg).
+
+VAT (HMRC VAT Notice 701/19, checked on GOV.UK on 13 Nov 2026): 5% for domestic and low use (up to an average of 33 kWh a day or 1,000 kWh a month), 20% for business use above that, and the standing charge is taxed at the same rate as the supply. A temporary 0% rate applies in Great Britain from 1 October 2026 to 30 June 2027; Northern Ireland stays at 5%.
+D-01 and D-03 show VAT that is not 5% of their net (£6.94 instead of £6.80, £6.53 instead of £6.35). D-06 charges VAT on the import line only, while the notice says the standing charge carries VAT too.
+
 ## Rules from these findings
 
 1. **Consumption comes from the USED column**, not from a meter reading. In a meter table the regex reader finds the header row (`PREV CURR USED`) and reads the columns by their position.
@@ -59,17 +86,34 @@ These invoices are synthetic ("illustrative", "fictional training document"). Th
    - **Readings:** if previous and current readings are shown, CURR - PREV must equal the consumption exactly. If a multiplier is printed, use (CURR - PREV) x multiplier.
    - **Money:** if a unit rate and a line amount are shown, consumption x rate must equal the amount to the penny. If the line also includes the standing charge, add days x standing charge first.
 
-   If any check fails, the invoice goes to review, and the reason records both numbers (for example `readings_mismatch 24638 vs 263.1`). If no check can be run, this rule does not confirm the consumption.
+   If any check fails, the invoice goes to review, and the reason records both numbers (for example `readings_mismatch 24638 vs 263.1`). If no check can be run (no readings, no rate), the kWh are confirmed only when both readers read the same number; otherwise the invoice goes to review.
    Why: two independent numbers on the invoice must agree before we trust either one. A label tells us which number the supplier meant; it does not prove the number is right.
 3. **A quantity equal to a meter reading (PREV or CURR) always goes to review**, whichever reader produced it.
-4. **When two totals on the same invoice disagree**, the invoice goes to review.
+4. **Totals never stop an invoice.** The payable total is information (level 3). When the invoice shows two totals that disagree, the one that equals net + VAT is kept and the record says `total_conflict <other> vs <kept>`. When neither equals net + VAT, both are kept and the record says `total_unresolved`.
+   Why: the total is not part of the emission. A wrong total does not make the emission wrong, so it is recorded, not reviewed.
+5. **Several import lines are added; nothing else is.** Consumption is the sum of the kWh on import lines (unit kWh, positive rate, positive amount). Standing charge or capacity days, CCL lines, export lines, negative lines and meter readings are never added. Every check must pass:
+   - each line: kWh x rate = amount (rounded half up to the penny);
+   - sum of the lines + standing charge - export credit = net.
+
+   The step from net to the payable total (VAT) is not part of this check; it is information under rule 4 and the VAT note.
+
+   Why: if a line is missing, counted twice, or days are read as kWh, the sum no longer matches the net.
+6. **Export is never consumption.** Scope 2 uses the gross electricity bought from the grid, not the import minus the export (GHG Protocol Scope 2 Guidance, chapter 5, Table 5.1). Export kWh are stored in `export_kwh` and never enter Scope 2. A negative consumption, or one equal to import - export, goes to review. Solar used on site is not on the invoice, so the tool cannot report it; the record says `onsite_generation_not_on_invoice`.
+7. **Supplier emission claims are ignored** (GHG Protocol Scope 2 Guidance, chapter 6: avoided emissions are reported apart and do not reduce the footprint). The text is recorded as `supplier_claim_ignored` and the number is not used. Such a claim is not REGO evidence.
+
+**VAT is checked by arithmetic only, never by a fixed rate**, because the rate can be 0%, 5% or 20%. VAT that is not net x a rate of 0%, 5% or 20% is recorded as `vat_mismatch <expected> vs <shown>` and does not stop the invoice.
 
 Examples:
-- D-01: 12,910 - 12,450 = 460 and 460 x 26.50p = £121.90. Confirmed.
+- D-01: 12,910 - 12,450 = 460 and 460 x 26.50p = £121.90. Confirmed. Flag `vat_mismatch 6.80 vs 6.94`.
+- D-02: £135.42 + £6.77 = £142.19, so £142.19 is kept. Processed with `total_conflict 138.45 vs 142.19`.
+- D-05: £411.80 + £156.62 + £37.20 = £605.62. Consumption 2,270 kWh. Without the night line the sum is £449.00, not £605.62, so the invoice would go to review.
+- D-06: consumption 280. £67.20 - £30.00 + £13.95 + £3.36 = £54.51, so £54.51 is kept. Processed with `total_conflict 58.40 vs 54.51`. 80 fails both checks (11,480 - 11,200 = 280, and 80 x 24p = £19.20, not £67.20).
 - D-07: 24,638 is not 263.1, and £76.71 is not £69.25. Review, with both reasons.
 
-These rules are based on L1 and L5. L2 to L4 still need to be checked.
-The Sustainability Manager reviewed rule 2. Still to verify: the GHG Protocol Scope 2 Guidance wording on data quality (sections 9.3 and 10.3.2, not yet read in the primary text) and a UK source for meter multipliers (the sources found were not UK).
+These rules cover all five dev layouts. The Sustainability Manager reviewed them.
+Still to verify: the GHG Protocol Scope 2 Guidance wording on data quality (sections 9.3 and 10.3.2), a UK source for meter multipliers, how VAT applies to SEG export payments, whether the 0% VAT period covers standing charges, and whether ESRS E1-5 asks for self-generated energy.
+
+**Price plausibility check:** it uses the sum of the energy lines divided by the kWh, not the payable total, because the total includes VAT at a changing rate and may be one of two conflicting figures.
 
 ## Location-based and market-based emissions
 
@@ -121,7 +165,6 @@ Changes needed in `tests/ground_truth_uk_electricity_dev.csv` before the code is
 
 ## To be decided
 
-- Consumption definition for day and night lines (L2, L3) and for solar import and export (L4).
 - Pro-rata policy for invoice periods that cross a year boundary.
 - Source and year of a UK residual mix factor.
 - What the regex reader looks for in each layout.
