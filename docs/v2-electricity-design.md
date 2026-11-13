@@ -100,6 +100,13 @@ D-01 and D-03 show VAT that is not 5% of their net (£6.94 instead of £6.80, £
    Why: if a line is missing, counted twice, or days are read as kWh, the sum no longer matches the net.
 6. **Export is never consumption.** Scope 2 uses the gross electricity bought from the grid, not the import minus the export (GHG Protocol Scope 2 Guidance, chapter 5, Table 5.1). Export kWh are stored in `export_kwh` and never enter Scope 2. A negative consumption, or one equal to import - export, goes to review. Solar used on site is not on the invoice, so the tool cannot report it; the record says `onsite_generation_not_on_invoice`.
 7. **Supplier emission claims are ignored** (GHG Protocol Scope 2 Guidance, chapter 6: avoided emissions are reported apart and do not reduce the footprint). The text is recorded as `supplier_claim_ignored` and the number is not used. Such a claim is not REGO evidence.
+8. **A value proved by the arithmetic wins over a reader that disagrees.** When the regex consumption comes from priced lines that check themselves and the LLM reads a different number, the invoice is processed with the regex value when all of these hold:
+   - the net check passes too (sum of the lines + standing charge - export credit = net), so no line is missing or counted twice;
+   - the LLM value does not pass the arithmetic itself (if two different values both check out, a human decides);
+   - the conflict is recorded as `llm_disagreed <llm value> vs <regex value>` and counted in every measurement.
+
+   Otherwise a conflict goes to review: a labelled value without a passing check, or an LLM value with no regex value, is never enough on its own.
+   Why: two readers that agree are two guesses that match, and both can fall into the same trap. The arithmetic ties three independent numbers on the invoice together, and a wrong number almost never fits it. On D-01 the LLM read 12,450 (the previous reading): 12,450 x 26.50p = £3,299.25, not £121.90, so 460 is kept and the invoice is processed with `llm_disagreed 12450 vs 460`. The v1 policy already allowed a value to be confirmed "by both readers or by the checks"; the v1 rule that every conflict goes to a human came from a time when no reader could check itself.
 
 **VAT is checked by arithmetic only, never by a fixed rate**, because the rate can be 0%, 5% or 20%. VAT that is not net x a rate of 0%, 5% or 20% is recorded as `vat_mismatch <expected> vs <shown>` and does not stop the invoice.
 
@@ -163,11 +170,38 @@ Changes needed in `tests/ground_truth_uk_electricity_dev.csv` before the code is
 
 **Test factors:** the dev set uses the 2025 grid factor (0.177 kgCO2e/kWh) for all invoices, including periods in 2024-12 and 2026. This is intended for the test run only. Real runs select the factor year from the invoice period, and the 0.177 value is checked against the official DESNZ spreadsheet first.
 
+## The regex reader
+
+**Principle: no layout-specific code.** The patterns describe how UK electricity bills write a value, not how one template looks. There is no "if layout L1" branch. A reader written per layout would do well on the dev set and on known_layouts, and badly on new_layouts.
+
+**What it looks for (critical fields only):**
+
+1. **Billing period:** the one date range on the invoice (`01 Jan 2025 – 31 Jan 2025`). Single dates are the invoice date and the due date. The label is not used, because it changes on every layout (`BILLING PERIOD`, `Period:`, `BILLING WINDOW`, `Billing Cycle:`, `CUSTOMER PERIOD`, `Billing period`) and is sometimes on a different line from the dates. No range, or two different ranges: review.
+2. **Energy type:** electricity when the invoice has an electricity marker and no gas marker.
+   - Electricity markers: the word "electric" or "electricity", "MPAN", or the 13-digit MPAN core (`12 3456 7890 123`), which may wrap onto the next line.
+   - Gas markers: "gas", "m3", "MPRN", "calorific", "cubic".
+   - Both or neither: review. "kWh" alone is not a marker, because UK gas is billed in kWh too. The word "electricity" does not appear at all on L1 to L4.
+3. **Consumption**, found in two ways:
+   - **Priced lines:** a line with a quantity, a rate in pence and an amount in pounds, where quantity x rate = amount to the penny (`460 26.50p £121.90`, `1,450 kWh 28.40 p/kWh £411.80`). Lines about standing charges, capacity, days (`31 days`, `p/day`), CCL or the Climate Change Levy are skipped. A positive line is import and the import lines are added (rule 5). A negative line is export and goes to `export_kwh` (rule 6). These values check themselves.
+   - **Labelled consumption:** a consumption word (`consumption`, `usage`, `units used`, `energy used`) followed by a number and kWh (`Consumption for period 263.1 kWh`). This value does not check itself: it needs the checks of rule 2 or the agreement of the LLM.
+
+   If both ways give a value and the values differ: review. A number labelled as a previous or current reading, or in a PREV or CURR column, is never consumption (rule 3).
+4. **Unit:** kWh. MWh only when the unit is printed next to the number, and it is converted x 1,000. Any other unit: review.
+
+**Prototype on the dev set (13 Nov 2026, not committed):** import kWh correct on 12 of 12, export 200 kept apart on D-06, energy type and period found on all 12. L1 to L4 (6 invoices) by priced lines that check themselves; L5 (6 invoices) by label only, with `readings_mismatch`, so they go to review as the key expects.
+This is not evidence: the patterns were written while looking at the dev set. The evidence is new_layouts.
+
+**Mistakes the prototype made first, and the lesson:**
+- "Day" was treated as "days", so the day-rate lines were skipped. A standing charge is recognised by `days`, `/day` or `per day`, never by `day` alone.
+- The export line (-200 x -15p = -£30) failed the check because of the signs. The check compares sizes; the sign only says import or export.
+- The MPAN core wrapped onto the next line on L1 and L4 and was not found.
+
+**Formats the patterns do not cover yet** (to be added with unit tests that use invented lines, never unseen invoices): `@` and `=` between the numbers (`1,234 kWh @ 30.10p = £371.44`), a rate in pounds (`£0.226 per kWh`, as on L5), and quantities split over two lines.
+
 ## To be decided
 
 - Pro-rata policy for invoice periods that cross a year boundary.
 - Source and year of a UK residual mix factor.
-- What the regex reader looks for in each layout.
 - All reasons for sending an invoice to review.
 - Risk: once the regex reader improves, both readers could agree on a wrong number (a meter reading, or one line of several). Rules 2 and 3 have to arrive together with the new regex reader, not after it.
 - Measurement plan: known_layouts and new_layouts reported separately, each with its own prediction written before the run.
