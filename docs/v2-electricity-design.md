@@ -35,14 +35,41 @@ The meter row checks itself:
 D-02 shows "TOTAL AMOUNT DUE £138.45" at the top and "TOTAL PAYABLE £142.19" at the bottom.
 The lines add up to £142.19 (£135.42 + £6.77 VAT), so the top figure is wrong. The answer key uses £142.19.
 
+### L5: the readings and the money contradict the consumption (checked 13 Nov 2026)
+
+The L5 statements (D-07 to D-12) print labelled lines: "Previous reading", "Current reading", "Consumption for period", a unit rate, a daily standing charge and one amount for "Electricity usage and standing charge".
+On all six, neither the readings nor the money agree with the consumption:
+
+| Invoice | CURR - PREV | Consumption | Usage x rate + days x standing charge | Amount shown |
+|---|---|---|---|---|
+| D-07 | 24,638 | 263.1 | £76.71 | £69.25 |
+| D-08 | 44,716 | 330.5 | £108.94 | £91.08 |
+| D-09 | 51,171 | 176.9 | £48.23 | £42.64 |
+| D-10 | 70,249 | 286.4 | £86.92 | £77.51 |
+| D-11 | 52,898 | 241.8 | £68.77 | £64.87 |
+| D-12 | 164 | 164.8 | £44.54 | £39.82 |
+
+The baseline read the consumption correctly on all six, but the invoice gives no way to confirm it. On a real bill a reading difference can differ from the billed kWh when a meter multiplier is printed, when the meter was exchanged (two meter rows) or when the register rolled over. None of these is shown here, and 24,638 / 263.1 is not a whole-number multiplier.
+These invoices are synthetic ("illustrative", "fictional training document"). They stay in the dev set as a test of the contradiction case.
+
 ## Rules from these findings
 
 1. **Consumption comes from the USED column**, not from a meter reading. In a meter table the regex reader finds the header row (`PREV CURR USED`) and reads the columns by their position.
-2. **A meter row is confirmed only when it checks itself:** CURR - PREV = USED and USED x RATE = AMOUNT (rounded to the penny).
+2. **Consumption is confirmed only when the invoice checks itself.** Every check the invoice allows must pass:
+   - **Readings:** if previous and current readings are shown, CURR - PREV must equal the consumption exactly. If a multiplier is printed, use (CURR - PREV) x multiplier.
+   - **Money:** if a unit rate and a line amount are shown, consumption x rate must equal the amount to the penny. If the line also includes the standing charge, add days x standing charge first.
+
+   If any check fails, the invoice goes to review, and the reason records both numbers (for example `readings_mismatch 24638 vs 263.1`). If no check can be run, this rule does not confirm the consumption.
+   Why: two independent numbers on the invoice must agree before we trust either one. A label tells us which number the supplier meant; it does not prove the number is right.
 3. **A quantity equal to a meter reading (PREV or CURR) always goes to review**, whichever reader produced it.
 4. **When two totals on the same invoice disagree**, the invoice goes to review.
 
-These rules are based on the three L1 invoices only. The other layouts (L2 to L5) still need to be checked.
+Examples:
+- D-01: 12,910 - 12,450 = 460 and 460 x 26.50p = £121.90. Confirmed.
+- D-07: 24,638 is not 263.1, and £76.71 is not £69.25. Review, with both reasons.
+
+These rules are based on L1 and L5. L2 to L4 still need to be checked.
+The Sustainability Manager reviewed rule 2. Still to verify: the GHG Protocol Scope 2 Guidance wording on data quality (sections 9.3 and 10.3.2, not yet read in the primary text) and a UK source for meter multipliers (the sources found were not UK).
 
 ## Location-based and market-based emissions
 
@@ -101,3 +128,5 @@ Changes needed in `tests/ground_truth_uk_electricity_dev.csv` before the code is
 - All reasons for sending an invoice to review.
 - Risk: once the regex reader improves, both readers could agree on a wrong number (a meter reading, or one line of several). Rules 2 and 3 have to arrive together with the new regex reader, not after it.
 - Measurement plan: known_layouts and new_layouts reported separately, each with its own prediction written before the run.
+- 14 unseen known_layouts invoices use the L5 template and may carry the same contradictions. Under rule 2 they may go to review. Write this down as a prediction, and decide how the unseen key treats contradicted invoices before the code is frozen, never after seeing results.
+- Whether a gap below 1 kWh between the readings and the consumption (smart meter decimals, D-12: 164 vs 164.8) should pass. v2 uses an exact match.
