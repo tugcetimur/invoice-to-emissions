@@ -44,10 +44,59 @@ The lines add up to £142.19 (£135.42 + £6.77 VAT), so the top figure is wrong
 
 These rules are based on the three L1 invoices only. The other layouts (L2 to L5) still need to be checked.
 
+## Location-based and market-based emissions
+
+Both totals are reported for every invoice (dual reporting, as in the GHG Protocol Scope 2 Guidance).
+The rule below was reviewed by the Sustainability Manager. The standards references (GHG Protocol quality criteria, ESRS E1-6) come from secondary sources and must be checked against the primary text before publication.
+
+**Location-based** is computed on every invoice: confirmed kWh x grid factor from `data/emission_factors.csv`.
+
+**Market-based = 0 only when all three hold:**
+1. The invoice text says "REGO" and gives the scope ("100%" or a kWh amount).
+2. The REGO statement is on this invoice itself (in the tariff or supply section), not only in a footer slogan or a separate document. A statement on the invoice is taken as covering this billing period and this supply. This is an assumption: a full audit also needs the supplier's REGO or fuel mix disclosure for the year.
+3. The kWh are confirmed by the consumption rules (for a meter table: rule 2 above).
+
+**Market-based = review** means: no market-based number is written, the reason is recorded, and a human checks the evidence. It does not stop the invoice: when the location-based fields are confirmed, the invoice is processed and its location-based total counts. Market-based goes to review when:
+- the tariff has a label without REGO evidence ("green", "100% renewable", "eco", "solar", "mixed");
+- a percentage is given without REGO evidence, or only a share of the supply is covered;
+- the tariff name and the invoice text contradict each other.
+
+**Market-based = location-based** for tariffs with no green claim (brown tariffs). The residual mix is not available, so the record says `market_basis = grid_average_fallback`. The two totals are equal because of this fallback, not by accident. The code does not use a residual mix until a factor with its source and year is added to `emission_factors.csv`.
+
+**Not zero:** a "Solar Electricity" tariff label without exported energy on the invoice is a supplier label, not on-site generation.
+
+**Checks that catch a wrong value:**
+- `market_based = 0` requires `market_basis = REGO` and the word "REGO" in `evidence_text`, otherwise error.
+- `market_based > location_based` goes to review.
+- An invoice period that crosses a year boundary goes to review (no pro-rata policy yet).
+
+**Fields kept for the audit trail:** `factor_value`, `factor_source`, `factor_year`, `method` (location or market), `market_basis` (REGO, residual_mix, supplier_specific, grid_average_fallback, unknown), `evidence_text`, `evidence_page`.
+
+**Dev set (answer key):**
+
+| Invoice | Tariff text | Market-based |
+|---|---|---|
+| D-03 | "100% REGO" in the tariff header, meter row checks itself | 0 |
+| D-04 | "100% Renewable", no REGO | review |
+| D-07, D-10 | "Green Electricity", no share, no REGO | review |
+| D-09, D-12 | "Solar Electricity", no export | review |
+| D-11 | "Mixed renewable", no share | review |
+| D-01, D-02, D-05, D-06, D-08 | no green claim | same as location-based (`grid_average_fallback`) |
+
+D-03 is the only dev invoice that reaches 0, so the zero path is tested on one invoice only.
+
+Changes needed in `tests/ground_truth_uk_electricity_dev.csv` before the code is measured against it:
+- D-04: `market_based_rule` from `zero` to `review` and `kg_co2e_market_based` empty (it is 0 now).
+- D-07, D-09, D-10, D-11, D-12: `market_based_rule` from `unknown` to `review`, so the key uses the same words as this document.
+- `expected_outcome` stays `process` for all of them: market-based review does not stop the invoice.
+
+**Test factors:** the dev set uses the 2025 grid factor (0.177 kgCO2e/kWh) for all invoices, including periods in 2024-12 and 2026. This is intended for the test run only. Real runs select the factor year from the invoice period, and the 0.177 value is checked against the official DESNZ spreadsheet first.
+
 ## To be decided
 
 - Consumption definition for day and night lines (L2, L3) and for solar import and export (L4).
-- Location-based and market-based emissions: when a green tariff counts as 0 (REGO evidence or not).
+- Pro-rata policy for invoice periods that cross a year boundary.
+- Source and year of a UK residual mix factor.
 - What the regex reader looks for in each layout.
 - All reasons for sending an invoice to review.
 - Risk: once the regex reader improves, both readers could agree on a wrong number (a meter reading, or one line of several). Rules 2 and 3 have to arrive together with the new regex reader, not after it.
