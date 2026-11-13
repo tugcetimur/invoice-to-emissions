@@ -69,7 +69,65 @@ def test_the_market_based_emission_follows_its_rule(row):
     elif rule == "same":
         assert float(market) == pytest.approx(float(row["kg_co2e_location_based"]), abs=0.001)
     else:
-        assert rule == "unknown" and market == ""
+        assert rule == "review" and market == ""
+
+
+# The market-based rule in docs/v2-electricity-design.md: only REGO evidence gives zero,
+# a green claim without it goes to review, and no claim falls back to the grid average.
+RULE_BY_TARIFF = {
+    "green_rego": "zero",
+    "green_claimed": "review",
+    "green_label": "review",
+    "solar_label": "review",
+    "mixed": "review",
+    "standard": "same",
+    "solar_export": "same",
+}
+
+
+@pytest.mark.parametrize("row", ROWS, ids=IDS)
+def test_the_market_based_rule_follows_the_design(row):
+    assert row["market_based_rule"] == RULE_BY_TARIFF[row["tariff"]]
+
+
+# Rule 2 in docs/v2-electricity-design.md: the L5 statements print readings and an amount
+# that contradict their consumption, so they cannot be confirmed.
+CONTRADICTED = {"D-07", "D-08", "D-09", "D-10", "D-11", "D-12"}
+
+
+@pytest.mark.parametrize("row", ROWS, ids=IDS)
+def test_an_invoice_that_contradicts_itself_goes_to_review(row):
+    contradicted = "readings_mismatch" in row["twist"] or "amount_mismatch" in row["twist"]
+    assert contradicted == (row["invoice_id"] in CONTRADICTED)
+    if contradicted:
+        assert row["expected_outcome"] == "review"
+
+
+# Rules 4 and 7 and the VAT note: these are recorded as flags and do not stop the invoice.
+FLAGS = {
+    "D-01": "vat_mismatch 6.80 vs 6.94",
+    "D-02": "total_conflict 138.45 vs 142.19",
+    "D-03": "vat_mismatch 6.35 vs 6.53",
+    "D-04": "supplier_claim_ignored",
+    "D-06": "total_conflict 58.40 vs 54.51",
+}
+
+
+@pytest.mark.parametrize("row", ROWS, ids=IDS)
+def test_a_flag_is_recorded_and_does_not_stop_the_invoice(row):
+    flag = FLAGS.get(row["invoice_id"])
+    if flag:
+        assert flag in row["twist"]
+        assert row["expected_outcome"] == "process"
+    else:
+        assert not any(name in row["twist"] for name in ("vat_mismatch", "total_conflict", "supplier_claim_ignored"))
+
+
+@pytest.mark.parametrize("row", ROWS, ids=IDS)
+def test_export_is_never_taken_off_the_consumption(row):
+    if float(row["export_kwh"]) > 0:
+        assert float(row["import_kwh"]) > 0
+        assert row["kg_co2e_location_based"] and float(row["kg_co2e_location_based"]) == pytest.approx(float(row["import_kwh"]) * FACTOR, abs=0.001)
 
 
 @pytest.mark.parametrize("row", ROWS, ids=IDS)
