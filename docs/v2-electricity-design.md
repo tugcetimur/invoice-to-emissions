@@ -198,12 +198,56 @@ This is not evidence: the patterns were written while looking at the dev set. Th
 
 **Formats the patterns do not cover yet** (to be added with unit tests that use invented lines, never unseen invoices): `@` and `=` between the numbers (`1,234 kWh @ 30.10p = £371.44`), a rate in pounds (`£0.226 per kWh`, as on L5), and quantities split over two lines.
 
+## Measurement plan (unseen set)
+
+This plan is fixed before the code is written, so the result cannot shape the rules.
+
+**1. Code freeze**
+- The code is frozen at one commit, tagged `v2-freeze`, with every test green.
+- After the unseen set is opened, the code is not changed for the official run. A bug found later is written down and fixed after the run, never before it.
+
+**2. The unseen answer key** (written after the freeze, before the run)
+- The author writes the key by hand, opening each unseen PDF. No AI reads the unseen set.
+- It has the same columns as the dev key.
+- `expected_outcome` follows rules 1 to 8 applied by hand, not by running the code. An invoice whose readings or money contradict its consumption is `review`, exactly as on the dev set. This also covers the 14 known_layouts invoices on the L5 template. `either` is allowed only with a written reason.
+- The same consistency tests as on the dev key are run on the unseen key: the numbers must appear in the text, and the emissions must follow the factor and the market-based rule.
+- The key is committed before the run.
+
+**3. Groups**
+
+| Group | Invoices | Layouts | What it shows |
+|---|---|---|---|
+| known_layouts | 17 | 3 (14 on the L5 template) | new numbers on layouts the code was built on |
+| new_layouts | 18 | 4 (15 on one template) | layouts the code has never seen |
+
+Because one template dominates each group, results are reported **per invoice and per layout**. Otherwise 15 invoices from one template would hide the other three layouts.
+
+**4. What is counted** (per group)
+- **Silent critical error** (the main metric): the invoice is processed and its kWh, unit, energy type or period differs from the key. A market-based 0 where the key says `review` or `same` is also a silent error.
+- Processed and correct.
+- Review where the key says review (needed).
+- Review where the key says process (unneeded).
+- Crashes.
+- The `llm_disagreed` count (rule 8), and how many of those the regex got right.
+- The location-based total of the processed invoices against the key.
+
+**5. Predictions** (`docs/v2-predictions.md`, committed after the key and before the run)
+- Per group: processed invoices, silent errors, unneeded reviews and `llm_disagreed`.
+- Per layout: a one-line expectation and its reason. The L5-template invoices are expected to go to review if they carry the same contradictions as on the dev set.
+
+**6. Success criteria** (fixed now)
+- **Pass:** 0 silent critical errors in both groups. This is the only pass criterion.
+- Any silent error means v2 missed its main goal. It is reported as such. It is not fixed and re-run on the same set.
+- Automation (how many invoices are processed) has no target, because the L5 invoices go to review by rule and a target would be misleading. It is reported against the prediction.
+
+**7. One official run**
+- One command. The output is saved in `docs/v2-official-run-output.txt` and the results are written in `docs/v2-results.md`.
+- After the run the unseen set is "burned": any new claim needs a new unseen set.
+
 ## To be decided
 
 - Pro-rata policy for invoice periods that cross a year boundary.
 - Source and year of a UK residual mix factor.
 - All reasons for sending an invoice to review.
 - Risk: once the regex reader improves, both readers could agree on a wrong number (a meter reading, or one line of several). Rules 2 and 3 have to arrive together with the new regex reader, not after it.
-- Measurement plan: known_layouts and new_layouts reported separately, each with its own prediction written before the run.
-- 14 unseen known_layouts invoices use the L5 template and may carry the same contradictions. Under rule 2 they may go to review. Write this down as a prediction, and decide how the unseen key treats contradicted invoices before the code is frozen, never after seeing results.
 - Whether a gap below 1 kWh between the readings and the consumption (smart meter decimals, D-12: 164 vs 164.8) should pass. v2 uses an exact match.
