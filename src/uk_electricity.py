@@ -57,15 +57,28 @@ def read_energy_type(text):
 # Consumption (rules 1, 2, 3, 5 and 6 in docs/v2-electricity-design.md)
 
 NUM = r"-?[\d,]+(?:\.\d+)?"
-# quantity, optional "kWh", rate in pence ("p" or "p/kWh"), amount in pounds
-PRICED = re.compile(rf"(?<![\d,.])({NUM})\s*(?:kWh\s+)?({NUM})\s*p(?:/kWh)?\s+(-?£{NUM}|£-?{NUM})", re.I)
+# A priced line: quantity, optional unit, optional "@", a rate, optional "=", an amount in pounds.
+# The rate is in pence per kWh ("26.50p", "28.40 p/kWh") or in pounds per kWh or MWh ("£0.25 per kWh", "£250.00/MWh").
+PRICED = re.compile(
+    rf"(?<![\d,.])({NUM})\s*(kWh|MWh)?\s*@?\s*"
+    rf"(?:({NUM})\s*p(?:/kWh)?(?![A-Za-z])|£({NUM})\s*(?:per\s*|/)(kWh|MWh))"
+    rf"\s*=?\s*(-?£{NUM}|£-?{NUM})",
+    re.I,
+)
 NOT_ENERGY = re.compile(r"standing|capacity|\bdays\b|/day|per day|\bccl\b|climate change levy", re.I)
 STANDALONE_NUMBER = re.compile(r"(?<!\S)[\d,]+(?:\.\d+)?(?!\S)")
 MONEY = re.compile(r"-?£-?[\d,]+\.\d{2}(?!\d)")
 NET_LINE = re.compile(r"\bsub ?total\b|\bnet\b", re.I)
 NOT_NET = re.compile(r"payable|\bdue\b|\bvat\b", re.I)
-LABELLED = re.compile(rf"(?:consumption|usage|units used|energy used)[^\n£]*?({NUM})\s*kWh", re.I)
+LABELLED = re.compile(rf"(?:consumption|usage|units used|energy used)[^\n£]*?({NUM})\s*(kWh|MWh)", re.I)
 READING = re.compile(rf"(previous|current) reading\s*:?\s*({NUM})", re.I)
+
+# The money check on a labelled value (rule 2): consumption x unit rate (+ days x daily charge) = amount.
+UNIT_RATE = re.compile(rf"£({NUM})\s*(?:per|/)\s*kWh|({NUM})\s*p\s*(?:per|/)\s*kWh", re.I)
+DAILY_CHARGE = re.compile(rf"£({NUM})\s*(?:per|/)\s*day|({NUM})\s*p\s*(?:per|/)\s*day", re.I)
+RATE_TEXT = re.compile(r"per\s*kWh|/kWh|per\s*day|/day", re.I)
+USAGE_AMOUNT = re.compile(r"usage|consumption|energy|electricity", re.I)
+NOT_USAGE_AMOUNT = re.compile(r"\bvat\b|total|balance|\bdue\b|payable", re.I)
 
 
 def number(text):
@@ -77,14 +90,30 @@ def show(value):
     return f"{value:.10g}"
 
 
-def checks_out(quantity, rate_pence, amount):
+def checks_out(quantity, rate_pounds, amount):
     """quantity x rate = amount to the penny. The sizes are compared; the sign only says import or export."""
-    return abs(round(abs(quantity * rate_pence) / 100, 2) - abs(amount)) <= 0.005
+    return abs(round(abs(quantity * rate_pounds), 2) - abs(amount)) <= 0.005
+
+
+def priced_line(match):
+    """(kWh, unit shown, amount) for a priced line that checks itself, or None."""
+    quantity, unit, pence, pounds, rate_unit, amount = match.groups()
+    quantity, amount, unit = number(quantity), number(amount), (unit or "").lower()
+    if pence is not None:
+        rate, rate_unit = number(pence) / 100, "kwh"
+    else:
+        rate, rate_unit = number(pounds), rate_unit.lower()
+    if unit and unit != rate_unit or not unit and rate_unit == "mwh":
+        return None  # the quantity and the rate are not in the same unit
+    if not checks_out(quantity, rate, amount):
+        return None
+    factor = 1000 if rate_unit == "mwh" else 1
+    return quantity * factor, rate_unit, amount, rate
 
 
 def read_priced_lines(text):
-    """Lines that check themselves: quantity x rate = amount. Returns imports, exports, other charges, reasons."""
-    imports, exports, other_charges, reasons = [], [], [], []
+    """Lines that check themselves. Returns imports, exports, other charges, units shown, reasons."""
+    imports, exports, other_charges, units, reasons = [], [], [], set(), []
     for line in text.splitlines():
         if NOT_ENERGY.search(line):
             amounts = MONEY.findall(line)
@@ -92,23 +121,25 @@ def read_priced_lines(text):
                 other_charges.append(number(amounts[-1]))
             continue
         for match in PRICED.finditer(line):
-            quantity, rate, amount = (number(group) for group in match.groups())
-            if not checks_out(quantity, rate, amount):
+            found = priced_line(match)
+            if found is None:
                 continue
+            kwh, unit, amount, rate = found
             readings = [number(n) for n in STANDALONE_NUMBER.findall(line[:match.start()])][-2:]
             if len(readings) == 2:
                 previous, current = readings
-                if abs(quantity) in (previous, current):
-                    reasons.append(f"quantity_is_a_reading {show(abs(quantity))}")
-                if abs((current - previous) - abs(quantity)) > 0.0005:
-                    reasons.append(f"readings_mismatch {show(current - previous)} vs {show(abs(quantity))}")
-            if quantity > 0 and rate > 0 and amount > 0:
-                imports.append((quantity, amount))
-            elif quantity < 0:
-                exports.append((quantity, amount))
+                if abs(kwh) in (previous, current):
+                    reasons.append(f"quantity_is_a_reading {show(abs(kwh))}")
+                if abs((current - previous) - abs(kwh)) > 0.0005:
+                    reasons.append(f"readings_mismatch {show(current - previous)} vs {show(abs(kwh))}")
+            units.add("MWh" if unit == "mwh" else "kWh")
+            if kwh > 0 and rate > 0 and amount > 0:
+                imports.append((kwh, amount))
+            elif kwh < 0:
+                exports.append((kwh, amount))
             else:
-                reasons.append(f"line_sign_unclear {show(quantity)}")
-    return imports, exports, other_charges, reasons
+                reasons.append(f"line_sign_unclear {show(kwh)}")
+    return imports, exports, other_charges, units, reasons
 
 
 def net_check(lines_total, text):
@@ -126,19 +157,58 @@ def net_check(lines_total, text):
     return f"net_mismatch {lines_total:.2f} vs {nets[0]:.2f}"
 
 
+def first_rate(pattern, text):
+    """A rate in pounds, from "£0.226 per kWh" or "22.6p per kWh"."""
+    match = pattern.search(text)
+    if not match:
+        return None
+    pounds, pence = match.groups()
+    return number(pounds) if pounds is not None else number(pence) / 100
+
+
+def money_check(kwh, text):
+    """Consumption x unit rate (+ days x daily charge) = the usage amount. None if no unit rate is printed."""
+    rate = first_rate(UNIT_RATE, text)
+    if rate is None:
+        return None
+    amount_lines = [line for line in text.splitlines()
+                    if MONEY.search(line) and USAGE_AMOUNT.search(line)
+                    and not RATE_TEXT.search(line) and not NOT_USAGE_AMOUNT.search(line)]
+    if not amount_lines:
+        return "amount_check_not_run"
+    expected = []
+    for line in amount_lines:
+        total = kwh * rate
+        if re.search(r"standing", line, re.I):
+            daily, (period, _) = first_rate(DAILY_CHARGE, text), read_period(text)
+            if daily is None or period is None:
+                return "amount_check_not_run"
+            start, end = (datetime.fromisoformat(day).date() for day in period)
+            total += ((end - start).days + 1) * daily
+        shown = number(MONEY.findall(line)[-1])
+        if abs(round(total, 2) - shown) <= 0.005:
+            return "passed"
+        expected.append((round(total, 2), shown))
+    return f"amount_mismatch {expected[0][0]:.2f} vs {expected[0][1]:.2f}"
+
+
 def read_consumption(text):
-    """Import kWh from priced lines that check themselves, or from a labelled value that is never confirmed alone.
+    """Import kWh from priced lines that check themselves, or from a labelled value confirmed by rule 2.
 
-    Returns ({"import_kwh", "export_kwh", "confirmed", "source"}, reasons).
+    Returns ({"import_kwh", "export_kwh", "unit_shown", "confirmed", "source"}, reasons).
     """
-    imports, exports, other_charges, reasons = read_priced_lines(text)
+    imports, exports, other_charges, units, reasons = read_priced_lines(text)
     priced_lines = {line for line in text.splitlines() if PRICED.search(line)}
-    labelled = {number(value) for line in text.splitlines() if line not in priced_lines
-                for value in LABELLED.findall(line)}
+    labelled = {}
+    for line in text.splitlines():
+        if line not in priced_lines:
+            for value, unit in LABELLED.findall(line):
+                kwh = number(value) * (1000 if unit.lower() == "mwh" else 1)
+                labelled[kwh] = "MWh" if unit.lower() == "mwh" else "kWh"
 
-    import_kwh, source = None, None
+    import_kwh, source, checks_run = None, None, 0
     if imports:
-        import_kwh, source = sum(quantity for quantity, _ in imports), "priced_lines"
+        import_kwh, source = sum(kwh for kwh, _ in imports), "priced_lines"
         lines_total = sum(amount for _, amount in imports + exports) + sum(other_charges)
         problem = net_check(lines_total, text)
         if problem:
@@ -147,19 +217,32 @@ def read_consumption(text):
             if abs(value - import_kwh) > 0.0005:
                 reasons.append(f"consumption_conflict {show(import_kwh)} vs {show(value)}")
     elif len(labelled) == 1:
-        import_kwh, source = labelled.pop(), "label"
+        (import_kwh, unit), = labelled.items()
+        source, units = "label", {unit}
         readings = {kind.lower(): number(value) for kind, value in READING.findall(text)}
         if import_kwh in readings.values():
             reasons.append(f"quantity_is_a_reading {show(import_kwh)}")
-        if len(readings) == 2 and abs(readings["current"] - readings["previous"] - import_kwh) > 0.0005:
-            reasons.append(f"readings_mismatch {show(readings['current'] - readings['previous'])} vs {show(import_kwh)}")
-        reasons.append("label_only")
+        if len(readings) == 2:
+            checks_run += 1
+            if abs(readings["current"] - readings["previous"] - import_kwh) > 0.0005:
+                reasons.append(f"readings_mismatch {show(readings['current'] - readings['previous'])} vs {show(import_kwh)}")
+        money = money_check(import_kwh, text)
+        if money is not None:
+            checks_run += 1
+            if money != "passed":
+                reasons.append(money)
+        if checks_run == 0:
+            reasons.append("label_only")
     elif len(labelled) > 1:
         reasons.append("label_ambiguous " + " vs ".join(show(value) for value in sorted(labelled)))
     if import_kwh is None and not any(r.startswith("label_ambiguous") for r in reasons):
         reasons.append("consumption_not_found")
 
-    export_kwh = sum(abs(quantity) for quantity, _ in exports)
-    reading = {"import_kwh": import_kwh, "export_kwh": export_kwh,
-               "confirmed": source == "priced_lines" and not reasons, "source": source}
+    reading = {
+        "import_kwh": import_kwh,
+        "export_kwh": sum(abs(kwh) for kwh, _ in exports),
+        "unit_shown": ("MWh" if "MWh" in units else "kWh") if units else None,
+        "confirmed": source is not None and not reasons,
+        "source": source,
+    }
     return reading, reasons

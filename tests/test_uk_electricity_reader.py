@@ -124,9 +124,14 @@ def test_readings_that_do_not_match_the_used_column_go_to_review():
     assert reading["confirmed"] is False and "readings_mismatch 250 vs 300" in reasons
 
 
-def test_a_labelled_value_is_never_confirmed_on_its_own():
+def test_a_labelled_value_is_confirmed_when_the_readings_agree_and_no_rate_is_printed():
     text = "Previous reading 1,000 kWh\nCurrent reading 1,300 kWh\nConsumption for period 300 kWh"
     reading, reasons = read_consumption(text)
+    assert (reading["import_kwh"], reading["confirmed"], reasons) == (300, True, [])
+
+
+def test_a_labelled_value_with_no_check_is_not_confirmed():
+    reading, reasons = read_consumption("Consumption for period 300 kWh")
     assert (reading["import_kwh"], reading["confirmed"], reasons) == (300, False, ["label_only"])
 
 
@@ -163,4 +168,60 @@ def test_the_dev_invoices_give_the_key_consumption(row):
     if row["invoice_id"] in CONFIRMED:
         assert reading["confirmed"] and reasons == []
     else:
-        assert not reading["confirmed"] and any(r.startswith("readings_mismatch") for r in reasons)
+        assert not reading["confirmed"]
+        assert any(r.startswith("readings_mismatch") for r in reasons)
+        assert any(r.startswith("amount_mismatch") for r in reasons)
+
+
+# Units, "@" and "=", rates in pounds, and the money check on a labelled value
+
+def confirmed_kwh(text):
+    reading, reasons = read_consumption(text)
+    return reading["import_kwh"], reading["unit_shown"], reading["confirmed"], reasons
+
+
+def test_at_and_equals_between_the_numbers():
+    assert confirmed_kwh("Energy 1,234 kWh @ 30.10p = £371.43\nNet £371.43") == (1234, "kWh", True, [])
+
+
+def test_a_rate_in_pounds_per_kwh():
+    assert confirmed_kwh("Day units 400 kWh @ £0.25 per kWh £100.00\nNet £100.00") == (400, "kWh", True, [])
+
+
+def test_mwh_is_converted_to_kwh():
+    assert confirmed_kwh("Energy 2.5 MWh @ £250.00/MWh = £625.00\nNet £625.00") == (2500, "MWh", True, [])
+
+
+def test_a_mwh_quantity_with_a_rate_per_kwh_is_not_used():
+    reading, reasons = read_consumption("Energy 2.5 MWh @ £0.25 per kWh = £625.00\nNet £625.00")
+    assert reading["import_kwh"] is None
+
+
+def test_a_labelled_mwh_value_is_converted():
+    reading, reasons = read_consumption("Consumption 2.5 MWh")
+    assert (reading["import_kwh"], reading["unit_shown"], reasons) == (2500, "MWh", ["label_only"])
+
+
+STATEMENT = """Period 01 Jun 2026 - 30 Jun 2026
+Previous reading 1,000 kWh
+Current reading 1,300 kWh
+Consumption for period 300 kWh
+Unit rate £0.20 per kWh
+Daily standing charge £0.50 per day
+Electricity usage and standing charge {amount}"""
+
+
+def test_a_labelled_value_is_confirmed_when_the_readings_and_the_money_agree():
+    # 300 x £0.20 + 30 days x £0.50 = £75.00
+    assert confirmed_kwh(STATEMENT.format(amount="£75.00")) == (300, "kWh", True, [])
+
+
+def test_money_that_contradicts_the_consumption_goes_to_review():
+    reading, reasons = read_consumption(STATEMENT.format(amount="£70.00"))
+    assert reading["confirmed"] is False and "amount_mismatch 75.00 vs 70.00" in reasons
+
+
+def test_a_printed_rate_without_an_amount_line_is_not_confirmed():
+    text = "Previous reading 1,000\nCurrent reading 1,300\nConsumption 300 kWh\nUnit rate £0.20 per kWh"
+    reading, reasons = read_consumption(text)
+    assert reading["confirmed"] is False and "amount_check_not_run" in reasons
