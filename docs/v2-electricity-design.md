@@ -143,6 +143,13 @@ The rule below was reviewed by the Sustainability Manager. The standards referen
 
 **Not zero:** a "Solar Electricity" tariff label without exported energy on the invoice is a supplier label, not on-site generation.
 
+**How the code applies it (`src/uk_emissions.py`):**
+- REGO evidence is "REGO" with its scope on the same line: "100%", or a kWh amount at least equal to the confirmed consumption. A smaller share is `rego_partial`, no scope is `rego_without_scope`; both go to market-based review.
+- Assumption: the code cannot tell a tariff statement from a footer slogan by the text alone, so condition 2 is approximated by "same line". This is checked by hand on the unseen key.
+- Green claim words: green, renewable, eco, wind, zero carbon, low carbon, net zero, carbon neutral, and "solar" only when the invoice has no export (with export it describes the customer's own panel, as on D-06).
+- A line with the supplier's own emission claim is never REGO or green evidence; it is flagged `supplier_claim_ignored`.
+- Emissions are written only for a processed invoice. A period that crosses a year boundary goes to review (`period_crosses_year`). A period in another year than the factor is flagged `factor_year_differs`.
+
 **Checks that catch a wrong value:**
 - `market_based = 0` requires `market_basis = REGO` and the word "REGO" in `evidence_text`, otherwise error.
 - `market_based > location_based` goes to review.
