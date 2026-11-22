@@ -196,7 +196,10 @@ This is not evidence: the patterns were written while looking at the dev set. Th
 - The export line (-200 x -15p = -£30) failed the check because of the signs. The check compares sizes; the sign only says import or export.
 - The MPAN core wrapped onto the next line on L1 and L4 and was not found.
 
-**Formats the patterns do not cover yet** (to be added with unit tests that use invented lines, never unseen invoices): `@` and `=` between the numbers (`1,234 kWh @ 30.10p = £371.44`), a rate in pounds (`£0.226 per kWh`, as on L5), and quantities split over two lines.
+**Formats added after the prototype** (tested with invented lines, never unseen invoices): `@` and `=` between the numbers (`1,234 kWh @ 30.10p = £371.43`), a rate in pounds (`£0.25 per kWh`, `£250.00/MWh`), MWh converted x 1,000 when the unit is printed, and the money check on a labelled value (consumption x unit rate + days x daily charge = the usage amount, days taken from the billing period). A MWh quantity with a rate per kWh is not used.
+A labelled value is confirmed under rule 2 when at least one check runs and every check passes. When a unit rate is printed but no usage amount is found, the money check cannot run and the invoice goes to review (`amount_check_not_run`). When no check can run, the record says `label_only`.
+
+**Formats not covered yet:** quantities split over two lines.
 
 ## Measurement plan (unseen set)
 
